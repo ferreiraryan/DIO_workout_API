@@ -29,5 +29,5 @@ class AtletaModel(BaseModel):
         back_populates="atleta"
     )
     centro_treinamento_id: Mapped[int] = mapped_column(
-        ForeignKey("centro_treinamento.pk_id")
+        ForeignKey("centros_treinamento.pk_id")
     )
