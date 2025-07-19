@@ -19,4 +19,4 @@ class CentroTreinamentoModel(BaseModel):
     endereco: Mapped[str] = mapped_column(String(60), nullable=False)
     proprietario: Mapped[str] = mapped_column(String(30), nullable=False)
 
-    atleta: Mapped["AtletaModel"] = relationship(back_populates="centros_treinamento")
+    atleta: Mapped["AtletaModel"] = relationship(back_populates="centro_treinamento")
