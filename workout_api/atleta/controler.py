@@ -1,15 +1,17 @@
 from datetime import datetime, timezone
-from inspect import Traceback
 from typing import Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Body, HTTPException, status
+from fastapi_pagination import Page
+
+from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import UUID4
 from sqlalchemy import select
-from starlette.status import HTTP_404_NOT_FOUND
+from sqlalchemy.orm import selectinload
 
 from workout_api.atleta.models import AtletaModel
-from workout_api.atleta.schemas import AtletaIn, AtletaOut, AtletaUpdate
+from workout_api.atleta.schemas import AtletaIn, AtletaOut, AtletaResumido, AtletaUpdate
 from workout_api.categorias.models import CategoriaModel
 from workout_api.centro_treinamento.models import CentroTreinamentoModel
 from workout_api.contrib.dependencies import DataBaseDependency
@@ -77,22 +79,37 @@ async def post(
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ocorreu um erro ao inserir os dados n banco",
+            detail="Ocorreu um erro ao inserir os dados n banco",
         )
     return atleta_out
 
 
 @router.get(
     "/",
-    summary="Consultar todos os atletas",
+    summary="Consultar todos os Atletas",
     status_code=status.HTTP_200_OK,
-    response_model=list[AtletaOut],
+    response_model=Page[AtletaOut],
 )
-async def query(db_session: DataBaseDependency) -> list[AtletaOut]:
-    atletas: list[AtletaOut] = (
-        (await db_session.execute(select(AtletaModel))).scalars().all()  # type: ignore
+async def query(db_session: DataBaseDependency) -> Page[AtletaOut]:
+    query = select(AtletaModel).options(
+        selectinload(AtletaModel.categoria),
+        selectinload(AtletaModel.centro_treinamento),
     )
-    return [AtletaOut.model_validate(atleta) for atleta in atletas]
+
+    return await paginate(db_session, query)
+
+
+# @router.get(
+#     "/",
+#     summary="Consultar todos os atletas",
+#     status_code=status.HTTP_200_OK,
+#     response_model=list[AtletaOut],
+# )
+# async def query(db_session: DataBaseDependency) -> list[AtletaOut]:
+#     atletas: list[AtletaOut] = (
+#         (await db_session.execute(select(AtletaModel))).scalars().all()  # type: ignore
+#     )
+#     return [AtletaOut.model_validate(atleta) for atleta in atletas]
 
 
 @router.get(
@@ -102,18 +119,16 @@ async def query(db_session: DataBaseDependency) -> list[AtletaOut]:
     response_model=AtletaOut,
 )
 async def query(id: UUID4, db_session: DataBaseDependency) -> AtletaOut:
-    atleta_db: Optional[AtletaModel] = (
-        (await db_session.execute(select(AtletaModel).filter_by(id=id)))
-        .scalars()
-        .first()
+    query = select(AtletaModel).options(
+        selectinload(AtletaModel.categoria),
+        selectinload(AtletaModel.centro_treinamento),
     )
 
-    if not atleta_db:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Atleta não encontrada no id: {id}",
-        )
-    return atleta_db
+    # ... seus filtros ...
+
+    # Esta chamada agora vai usar a função paginate correta
+    # por causa do import explícito.
+    return await paginate(db_session, query)
 
 
 @router.post(
