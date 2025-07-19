@@ -88,7 +88,7 @@ async def post(
     "/",
     summary="Consultar todos os Atletas",
     status_code=status.HTTP_200_OK,
-    response_model=Page[AtletaOut],
+    response_model=Page[AtletaResumido],
 )
 async def query(
     db_session: DataBaseDependency,
@@ -105,7 +105,13 @@ async def query(
     if cpf:
         query = query.filter(AtletaModel.cpf == cpf)
 
-    return await paginate(db_session, query)
+    return await paginate(
+        db_session,
+        query,
+        transformer=lambda items: [
+            AtletaResumido.model_validate(item) for item in items
+        ],
+    )
 
 
 @router.get(
