@@ -143,3 +143,22 @@ async def query(
     await db_session.commit()
     await db_session.refresh(atleta_db)
     return atleta_db
+
+
+@router.delete(
+    "/{id}", summary="Deletar um atleta pelo id", status_code=status.HTTP_204_NO_CONTENT
+)
+async def query(id: UUID4, db_session: DataBaseDependency) -> None:
+    atleta_db: Optional[AtletaModel] = (
+        (await db_session.execute(select(AtletaModel).filter_by(id=id)))
+        .scalars()
+        .first()
+    )
+    if not atleta_db:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Atleta não encontrada no id: {id}",
+        )
+
+    await db_session.delete(atleta_db)
+    await db_session.commit()
