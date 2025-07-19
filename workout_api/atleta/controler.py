@@ -90,26 +90,22 @@ async def post(
     status_code=status.HTTP_200_OK,
     response_model=Page[AtletaOut],
 )
-async def query(db_session: DataBaseDependency) -> Page[AtletaOut]:
+async def query(
+    db_session: DataBaseDependency,
+    nome: Optional[str] = None,
+    cpf: Optional[str] = None,
+) -> Page[AtletaResumido]:
     query = select(AtletaModel).options(
         selectinload(AtletaModel.categoria),
         selectinload(AtletaModel.centro_treinamento),
     )
+    if nome:
+        query = query.filter(AtletaModel.nome == nome)
+
+    if cpf:
+        query = query.filter(AtletaModel.cpf == cpf)
 
     return await paginate(db_session, query)
-
-
-# @router.get(
-#     "/",
-#     summary="Consultar todos os atletas",
-#     status_code=status.HTTP_200_OK,
-#     response_model=list[AtletaOut],
-# )
-# async def query(db_session: DataBaseDependency) -> list[AtletaOut]:
-#     atletas: list[AtletaOut] = (
-#         (await db_session.execute(select(AtletaModel))).scalars().all()  # type: ignore
-#     )
-#     return [AtletaOut.model_validate(atleta) for atleta in atletas]
 
 
 @router.get(
