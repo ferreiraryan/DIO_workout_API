@@ -9,7 +9,7 @@ from sqlalchemy import select
 from starlette.status import HTTP_404_NOT_FOUND
 
 from workout_api.atleta.models import AtletaModel
-from workout_api.atleta.schemas import AtletaIn, AtletaOut
+from workout_api.atleta.schemas import AtletaIn, AtletaOut, AtletaUpdate
 from workout_api.categorias.models import CategoriaModel
 from workout_api.centro_treinamento.models import CentroTreinamentoModel
 from workout_api.contrib.dependencies import DataBaseDependency
@@ -115,13 +115,16 @@ async def query(id: UUID4, db_session: DataBaseDependency) -> AtletaOut:
         )
     return atleta_db
 
-@router.get(
+
+@router.post(
     "/{id}",
     summary="Editar um atleta pelo id",
     status_code=status.HTTP_200_OK,
     response_model=AtletaOut,
 )
-async def query(id: UUID4, db_session: DataBaseDependency) -> AtletaOut:
+async def query(
+    id: UUID4, db_session: DataBaseDependency, atleta_up: AtletaUpdate = Body(...)
+) -> AtletaOut:
     atleta_db: Optional[AtletaModel] = (
         (await db_session.execute(select(AtletaModel).filter_by(id=id)))
         .scalars()
@@ -133,4 +136,10 @@ async def query(id: UUID4, db_session: DataBaseDependency) -> AtletaOut:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Atleta não encontrada no id: {id}",
         )
+    atleta_update = atleta_up.model_dump(exclude_unset=True)
+    for key, value in atleta_update.items():
+        setattr(atleta_db, key, value)
+
+    await db_session.commit()
+    await db_session.refresh(atleta_db)
     return atleta_db
