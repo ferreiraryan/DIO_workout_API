@@ -4,10 +4,10 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Body, HTTPException, status
 from fastapi_pagination import Page
-
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import UUID4
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from workout_api.atleta.models import AtletaModel
@@ -76,6 +76,11 @@ async def post(
 
         db_session.add(atleta_model)
         await db_session.commit()
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            detail=f"Já existe um atleta cadastrado com o cpf: {atleta_in.cpf}",
+        )
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -121,16 +126,19 @@ async def query(
     response_model=AtletaOut,
 )
 async def query(id: UUID4, db_session: DataBaseDependency) -> AtletaOut:
-    query = select(AtletaModel).options(
-        selectinload(AtletaModel.categoria),
-        selectinload(AtletaModel.centro_treinamento),
+    atleta_db: Optional[AtletaModel] = (
+        (await db_session.execute(select(AtletaModel).filter_by(id=id)))
+        .scalars()
+        .first()
     )
 
-    # ... seus filtros ...
+    if not atleta_db:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Categoria não encontrada no id: {id}",
+        )
 
-    # Esta chamada agora vai usar a função paginate correta
-    # por causa do import explícito.
-    return await paginate(db_session, query)
+    return AtletaOut.model_validate(atleta_db)
 
 
 @router.post(
